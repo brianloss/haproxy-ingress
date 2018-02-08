@@ -92,3 +92,38 @@ func TestIngressAffinityCookieConfig(t *testing.T) {
 		t.Errorf("expected insert as sticky-strategy but returned %v", nginxAffinity.CookieConfig.Strategy)
 	}
 }
+
+func TestIngressAffinityCookieConfigWithSuffix(t *testing.T) {
+	ing := buildIngress()
+
+	suffix := "_backend1-80"
+
+	data := map[string]string{}
+	data[annotationAffinityType+suffix] = "cookie"
+	data[annotationAffinityCookieHash+suffix] = "sha123"
+	data[annotationAffinityCookieName+suffix] = "INGRESSCOOKIE"
+	data[annotationAffinityCookieStrategy+suffix] = "insert"
+	ing.SetAnnotations(data)
+
+	affin, _ := ParseWithSuffix(ing, suffix)
+	nginxAffinity, ok := affin.(*AffinityConfig)
+	if !ok {
+		t.Errorf("expected a Config type")
+	}
+
+	if nginxAffinity.AffinityType != "cookie" {
+		t.Errorf("expected cookie as sticky-type but returned %v", nginxAffinity.AffinityType)
+	}
+
+	if nginxAffinity.CookieConfig.Hash != "md5" {
+		t.Errorf("expected md5 as sticky-hash but returned %v", nginxAffinity.CookieConfig.Hash)
+	}
+
+	if nginxAffinity.CookieConfig.Name != "INGRESSCOOKIE" {
+		t.Errorf("expected INGRESSCOOKIE as sticky-name but returned %v", nginxAffinity.CookieConfig.Name)
+	}
+
+	if nginxAffinity.CookieConfig.Strategy != "insert" {
+		t.Errorf("expected insert as sticky-strategy but returned %v", nginxAffinity.CookieConfig.Strategy)
+	}
+}
