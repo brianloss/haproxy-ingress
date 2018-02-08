@@ -112,6 +112,8 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		BindIPAddrHealthz:    "*",
 		Syslog:               "",
 		BackendCheckInterval: "2s",
+		BackendCheckFallCount: 1,
+		BackendCheckRiseCount: 1,
 		Forwardfor:           "add",
 		MaxConn:              2000,
 		NoTLSRedirect:        "/.well-known/acme-challenge",

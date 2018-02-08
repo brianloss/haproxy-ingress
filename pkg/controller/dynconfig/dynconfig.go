@@ -18,12 +18,13 @@ package dynconfig
 
 import (
 	"fmt"
+	"reflect"
+	"sort"
+
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-	"reflect"
-	"sort"
 )
 
 // DynConfig has configurations used to update a running HAProxy instance
@@ -89,7 +90,7 @@ func removeEndpoint(statsSocket, backendName, backendServerName string) bool {
 }
 
 // add Ingress Endpoint to a backend in a specific server slot
-func addEndpoint(statsSocket, backendName, backendServerName, address, port string, weight int) bool {
+func addEndpoint(statsSocket, backendName, backendServerName, address, port string, weight int, checkPort int) bool {
 	var state string
 	if weight == 0 {
 		state = "drain"
@@ -103,7 +104,12 @@ func addEndpoint(statsSocket, backendName, backendServerName, address, port stri
 		fmt.Sprintf("set server %s/%s state %s\n", backendName, backendServerName, state))
 	err3 := utils.SendToSocket(statsSocket,
 		fmt.Sprintf("set server %s/%s weight %d\n", backendName, backendServerName, weight))
-	if err1 != nil || err2 != nil || err3 != nil {
+	var err4 error
+	if checkPort > 0 {
+		err4 = utils.SendToSocket(statsSocket,
+			fmt.Sprintf("set server %s/%s check-port %d\n", backendName, backendServerName, checkPort))
+	}
+	if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
 		glog.Warningln("failed socket command srv add")
 		return false
 	}
@@ -240,7 +246,7 @@ func (d *DynConfig) dynamicUpdateBackends() bool {
 					BackendEndpoint:   endpoint,
 				}
 				backendSlots.EmptySlots = backendSlots.EmptySlots[1:]
-				reloadRequired = reloadRequired || !addEndpoint(d.statsSocket, backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port, endpoint.Weight)
+				reloadRequired = reloadRequired || !addEndpoint(d.statsSocket, backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port, endpoint.Weight, d.updBackendsMap[backendName].HealthCheckPort)
 			}
 			d.updatedConfig.BackendSlots[backendName] = backendSlots
 		}

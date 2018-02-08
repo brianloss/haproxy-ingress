@@ -67,6 +67,8 @@ type (
 		BindIPAddrHealthz    string `json:"bind-ip-addr-healthz"`
 		Syslog               string `json:"syslog-endpoint"`
 		BackendCheckInterval string `json:"backend-check-interval"`
+		BackendCheckFallCount int `json:"backend-check-fall-count"`
+		BackendCheckRiseCount int `json:"backend-check-rise-count"`
 		Forwardfor           string `json:"forwardfor"`
 		MaxConn              int    `json:"max-connections"`
 		NoTLSRedirect        string `json:"no-tls-redirect-locations"`
