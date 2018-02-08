@@ -189,6 +189,14 @@ type Backend struct {
 	SessionAffinity SessionAffinityConfig `json:"sessionAffinityConfig"`
 	// Consistent hashing by NGINX variable
 	UpstreamHashBy string `json:"upstream-hash-by,omitempty"`
+	// Port to use for HAProxy agent checks
+	AgentPort int `json:"agent-port,omitempty"`
+	// Port to use for monitoring availability of this backend
+	MonitorPort int `json:"monitor-port,omitempty"`
+	// URI to use for health checks
+	HealthCheckURI string `json:"health-check-uri,omitempty"`
+	// Port to use for health checks
+	HealthCheckPort int `json:"health-check-port,omitempty"`
 }
 
 // SessionAffinityConfig describes different affinity configurations for new sessions.

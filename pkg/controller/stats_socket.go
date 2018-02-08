@@ -71,7 +71,7 @@ func removeEndpoint(statsSocket, backendName, backendServerName string) bool {
 }
 
 // add Ingress Endpoint to a backend in a specific server slot
-func addEndpoint(statsSocket, backendName, backendServerName, address, port string, draining bool) bool {
+func addEndpoint(statsSocket, backendName, backendServerName, address, port string, draining bool, check_port int) bool {
 	weight := 100
 	state := "ready"
 	if draining {
@@ -85,7 +85,12 @@ func addEndpoint(statsSocket, backendName, backendServerName, address, port stri
 		fmt.Sprintf("set server %s/%s state %s\n", backendName, backendServerName, state))
 	err3 := utils.SendToSocket(statsSocket,
 		fmt.Sprintf("set server %s/%s weight %d\n", backendName, backendServerName, weight))
-	if err1 != nil || err2 != nil || err3 != nil {
+	var err4 error
+	if check_port > 0 {
+		err4 = utils.SendToSocket(statsSocket,
+			fmt.Sprintf("set server %s/%s check-port %d\n", backendName, backendServerName, check_port))
+	}
+	if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
 		glog.Warningln("failed socket command srv add")
 		return false
 	}
@@ -196,7 +201,8 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 								BackendEndpoint:   endpoint,
 							}
 							backendSlots.EmptySlots = backendSlots.EmptySlots[1:]
-							reloadRequired = reloadRequired || !addEndpoint(currentConfig.Cfg.StatsSocket, backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port, endpoint.Draining)
+							reloadRequired = reloadRequired || !addEndpoint(currentConfig.Cfg.StatsSocket, backendName, backendSlots.FullSlots[k].BackendServerName,
+								endpoint.Address, endpoint.Port, endpoint.Draining, updBackendsMap[backendName].HealthCheckPort)
 						}
 						updatedConfig.BackendSlots[backendName] = backendSlots
 					}

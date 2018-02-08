@@ -77,6 +77,15 @@ The following annotations are supported:
 |`[0]`|[`ingress.kubernetes.io/rewrite-target`](#rewrite-target)|path string|-|
 ||[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name or regex|-|
 
+The following annotations are only supported when specified with a suffix that includes the ingress
+backend name and service port name specified as `_backendName-port`
+
+||Name|Data|Usage|
+|---|---|---|:---:|
+|`[1]`|[`ingress.kubernetes.io/agent-port_<backendName-port>`](#agent-port)|backend agent listen port|-|
+|`[1]`|[`ingress.kubernetes.io/monitor-port_<backendName-port>`](#monitor-port)|backend health monitor port|-|
+|`[1]`|[`ingress.kubernetes.io/health-check-uri_<backendName-port>`](#health-check-uri)|backend health check uri|-|
+
 ### Affinity
 
 Configure if HAProxy should maintain client requests to the same backend server.
@@ -94,6 +103,12 @@ limitation will be removed when HAProxy version is updated to `1.8`.
 * http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-cookie
 * http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-cookie
 * https://www.haproxy.com/blog/load-balancing-affinity-persistence-sticky-sessions-what-you-need-to-know/
+
+Note that affinity annotations can also be set on a per-backend basis. Add a suffix to each annotation with
+the backend name and port (as specified in the ingress paths), and the affinity configuration will only be
+applied to the corresponding backend. 
+For example setting the annotation `ingress.kubernetes.io/affinity_backend1-80` to `cookie` will configure
+cookie affinity only for the backend `backend` on port `80`.
 
 ### Auth TLS
 
@@ -151,6 +166,24 @@ The following table shows some examples:
 |/abc/|/abc/|/|/|
 |/abc/|/abc/x|/|/x|
 
+### Agent Port
+
+If set to a value greater than 0, the agent port causes servers for the associated backend to be 
+configured to use an HAProxy agent check on the specified port. The interval is taken from the global 
+config map.
+
+### Monitor Port
+
+If set to a value greater than 0, this will trigger creation of a monitor context listening on the
+specified port. This monitor context will indicate whether or not any servers in the associated
+backend are available. Requests to the `/healthz` URI on the specified port will return a 200 if any
+servers in the associated backend are up. Since this annotation can only be applied to a service,
+the backend to be monitored is selected.
+
+### Health Check URI
+
+If set to a non-empty value, this will enable HTTP health checks at the specified URI for the backend.
+
 ## ConfigMap
 
 If using ConfigMap to configure HAProxy Ingress, use
@@ -166,6 +199,8 @@ The following parameters are supported:
 |---|---|---|---|
 ||[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
 ||[`backend-check-interval`](#backend-check-interval)|time with suffix|`2s`|
+||[`backend-check-fall-count`](#backend-check-fall-count)|number of check failures|1|
+||[`backend-check-rise-count`](#backend-check-rise-count)|number of check successes|1|
 ||[`backend-server-slots-increment`](#dynamic-scaling)|number of slots|`32`|
 |`[1]`|[`cookie-key`](#cookie-key)|secret key|`Ingress`|
 ||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
@@ -215,6 +250,18 @@ http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-balance
 Define the interval between TCP health checks to the backend using `inter` option.
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-inter
+
+### backend-check-fall-count
+
+Define the number of failed TCP health checks to the backend using `fall` option.
+
+http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-fall
+
+### backend-check-rise-count
+
+Define the number of successful TCP health checks to the backend using `rise` option.
+
+http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-rise
 
 ### cookie-key
 

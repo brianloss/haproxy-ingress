@@ -97,6 +97,8 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		Syslog:                      "",
 		BalanceAlgorithm:            "roundrobin",
 		BackendCheckInterval:        "2s",
+		BackendCheckFallCount:       1,
+		BackendCheckRiseCount:       1,
 		Forwardfor:                  "add",
 		MaxConn:                     2000,
 		SSLHeadersPrefix:            "X-SSL",

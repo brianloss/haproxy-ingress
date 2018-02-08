@@ -65,16 +65,16 @@ type CookieConfig struct {
 
 // CookieAffinityParse gets the annotation values related to Cookie Affinity
 // It also sets default values when no value or incorrect value is found
-func CookieAffinityParse(ing *extensions.Ingress) *CookieConfig {
+func CookieAffinityParse(ing *extensions.Ingress, suffix string) *CookieConfig {
 
-	sn, err := parser.GetStringAnnotation(annotationAffinityCookieName, ing)
+	sn, err := parser.GetStringAnnotation(annotationAffinityCookieName + suffix, ing)
 
 	if err != nil || sn == "" {
 		glog.V(3).Infof("Ingress %v: No value found in annotation %v. Using the default %v", ing.Name, annotationAffinityCookieName, defaultAffinityCookieName)
 		sn = defaultAffinityCookieName
 	}
 
-	ss, err := parser.GetStringAnnotation(annotationAffinityCookieStrategy, ing)
+	ss, err := parser.GetStringAnnotation(annotationAffinityCookieStrategy + suffix, ing)
 
 	if err != nil || !affinityCookieStrategyRegex.MatchString(ss) {
 		if ss != "" {
@@ -85,7 +85,7 @@ func CookieAffinityParse(ing *extensions.Ingress) *CookieConfig {
 		ss = defaultAffinityCookieStrategy
 	}
 
-	sh, err := parser.GetStringAnnotation(annotationAffinityCookieHash, ing)
+	sh, err := parser.GetStringAnnotation(annotationAffinityCookieHash + suffix, ing)
 
 	if err != nil || !affinityCookieHashRegex.MatchString(sh) {
 		glog.V(3).Infof("Invalid or no annotation value found in Ingress %v: %v. Setting it to default %v", ing.Name, annotationAffinityCookieHash, defaultAffinityCookieHash)
@@ -110,16 +110,22 @@ type affinity struct {
 // ParseAnnotations parses the annotations contained in the ingress
 // rule used to configure the affinity directives
 func (a affinity) Parse(ing *extensions.Ingress) (interface{}, error) {
+	return ParseWithSuffix(ing, "")
+}
+
+// ParseAnnotations parses the annotations contained in the ingress
+// rule used to configure the affinity directives
+func ParseWithSuffix(ing *extensions.Ingress, suffix string) (interface{}, error) {
 	cookieAffinityConfig := &CookieConfig{}
 	// Check the type of affinity that will be used
-	at, err := parser.GetStringAnnotation(annotationAffinityType, ing)
+	at, err := parser.GetStringAnnotation(annotationAffinityType+suffix, ing)
 	if err != nil {
 		at = ""
 	}
 
 	switch at {
 	case "cookie":
-		cookieAffinityConfig = CookieAffinityParse(ing)
+		cookieAffinityConfig = CookieAffinityParse(ing, suffix)
 
 	default:
 		glog.V(3).Infof("No default affinity was found for Ingress %v", ing.Name)

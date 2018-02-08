@@ -87,6 +87,9 @@ listen tcp-{{ $tcp.Port }}
 backend {{ $backend.Name }}
     mode {{ if $backend.SSLPassthrough }}tcp{{ else }}http{{ end }}
     balance {{ $cfg.BalanceAlgorithm }}
+{{- if ne $backend.HealthCheckURI "" }}
+    option httpchk GET {{ $backend.HealthCheckURI }} HTTP/1.1
+{{- end }}
 {{- $sticky := $backend.SessionAffinity }}
 {{- if eq $sticky.AffinityType "cookie" }}
     cookie {{ $sticky.CookieSessionAffinity.Name }} {{ $sticky.CookieSessionAffinity.Strategy }} {{ if eq $sticky.CookieSessionAffinity.Strategy "insert" }}indirect nocache{{ end }} dynamic
@@ -98,10 +101,10 @@ backend {{ $backend.Name }}
 {{- end }}
 {{- $BackendSlots := index $ing.BackendSlots $backend.Name }}
 {{- range $target, $slot := $BackendSlots.FullSlots }}
-    server {{ $slot.BackendServerName }} {{ $target }} {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}{{ if $cfg.DrainSupport }}weight {{ if $slot.BackendEndpoint.Draining }}0 {{ else }}100 {{ end }}{{ end }}check port {{ $slot.BackendEndpoint.Port }} inter {{ $cfg.BackendCheckInterval }}
+    server {{ $slot.BackendServerName }} {{ $target }} {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}{{ if $cfg.DrainSupport }}weight {{ if $slot.BackendEndpoint.Draining }}0 {{ else }}100 {{ end }}{{ end }}check port {{ if gt $backend.HealthCheckPort 0 }}{{ $backend.HealthCheckPort }}{{ else }}{{ $slot.BackendEndpoint.Port }}{{ end }} inter {{ $cfg.BackendCheckInterval }} fall {{ $cfg.BackendCheckFallCount }} rise {{ $cfg.BackendCheckRiseCount }}{{ if gt $backend.AgentPort 0 }} agent-check agent-port {{ $backend.AgentPort }} agent-inter {{ $cfg.BackendCheckInterval }}{{ end }}
 {{- end }}
 {{- range $empty := $BackendSlots.EmptySlots }}
-    server {{ $empty }} 127.0.0.1:81 {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check disabled inter {{ $cfg.BackendCheckInterval }}
+    server {{ $empty }} 127.0.0.1:81 {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check disabled inter {{ $cfg.BackendCheckInterval }} fall {{ $cfg.BackendCheckFallCount }} rise {{ $cfg.BackendCheckRiseCount }}{{ if gt $backend.AgentPort 0 }} agent-check agent-port {{ $backend.AgentPort }} agent-inter {{ $cfg.BackendCheckInterval }}{{ end }}
 {{- end }}
 {{- end }}
 
@@ -470,3 +473,18 @@ frontend healthz
     mode http
     monitor-uri /healthz
     no log
+
+######
+###### Backend Health Monitors
+######
+{{- range $backend := $ing.Backends }}
+{{- if gt $backend.MonitorPort 0 }}
+frontend {{ $backend.Name }}-monitor
+    bind *:{{ $backend.MonitorPort }}
+    mode http
+    acl {{ $backend.Name }}_down nbsrv({{ $backend.Name }}) lt 1
+    monitor-uri /healthz
+    monitor     fail if {{ $backend.Name }}_down
+    no log
+{{- end }}
+{{- end }}

@@ -54,6 +54,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
 	local_strings "github.com/jcmoraisjr/haproxy-ingress/pkg/common/strings"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/task"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/sessionaffinity"
 )
 
 const (
@@ -580,22 +581,43 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 					server.Locations = append(server.Locations, loc)
 				}
 
-				if ups.SessionAffinity.AffinityType == "" {
-					ups.SessionAffinity.AffinityType = affinity.AffinityType
-				}
+				// Look for per-backend ingress annotations
+				annotationSuffix := fmt.Sprintf("_%v-%v", path.Backend.ServiceName, path.Backend.ServicePort.String())
 
-				if affinity.AffinityType == "cookie" {
-					ups.SessionAffinity.CookieSessionAffinity.Name = affinity.CookieConfig.Name
-					ups.SessionAffinity.CookieSessionAffinity.Strategy = affinity.CookieConfig.Strategy
-					ups.SessionAffinity.CookieSessionAffinity.Hash = affinity.CookieConfig.Hash
+				// If there is a backend-specific affinity configuration, apply it.
+				affin, _ := sessionaffinity.ParseWithSuffix(ing, annotationSuffix)
+				applyAffinityConfig(ups, affin.(*sessionaffinity.AffinityConfig), host, path)
 
-					locs := ups.SessionAffinity.CookieSessionAffinity.Locations
-					if _, ok := locs[host]; !ok {
-						locs[host] = []string{}
+				// If there is a backend-specific agent port, then apply it
+				if agentPort, _ := parser.GetIntAnnotation("ingress.kubernetes.io/agent-port" + annotationSuffix, ing); agentPort > 0 {
+					ups.AgentPort = agentPort
+					if agentPort > 0 {
+						// HAProxy bug workaround. If we're using an agent check, then don't set the weight to 0. Instead let the agent handle it.
+						// If we set the weight to 0, then HAProxy will be stuck with a 0 weight forever (until a full reload) even though we might
+						// set the weight over the socket.
+						for i, _ := range ups.Endpoints {
+							ups.Endpoints[i].Draining = false
+						}
 					}
-
-					locs[host] = append(locs[host], path.Path)
 				}
+
+				// If there is a backend-specific monitor port, then apply it
+				if monitorPort, _ := parser.GetIntAnnotation("ingress.kubernetes.io/monitor-port" + annotationSuffix, ing); monitorPort > 0 {
+					ups.MonitorPort = monitorPort
+				}
+
+				// If there is a backend-specific health check URI, then apply it
+				if healthCheckURI, _ := parser.GetStringAnnotation("ingress.kubernetes.io/health-check-uri" + annotationSuffix, ing); healthCheckURI != "" {
+					ups.HealthCheckURI = healthCheckURI
+				}
+
+				// If there is a backend-specific health check port, then apply it
+				if healthCheckPort, _ := parser.GetIntAnnotation("ingress.kubernetes.io/health-check-port" + annotationSuffix, ing); healthCheckPort > 0 {
+					ups.HealthCheckPort = healthCheckPort
+				}
+
+				// Apply the ingress-global affinity configuration (which will do nothing if there is already an affinity config set)
+				applyAffinityConfig(ups, affinity, host, path)
 			}
 		}
 	}
@@ -655,6 +677,24 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 	})
 
 	return aUpstreams, aServers
+}
+
+func applyAffinityConfig(ups *ingress.Backend, affinity *sessionaffinity.AffinityConfig, host string, path extensions.HTTPIngressPath) {
+	if ups.SessionAffinity.AffinityType == "" {
+		ups.SessionAffinity.AffinityType = affinity.AffinityType
+	}
+	if affinity.AffinityType == "cookie" {
+		ups.SessionAffinity.CookieSessionAffinity.Name = affinity.CookieConfig.Name
+		ups.SessionAffinity.CookieSessionAffinity.Strategy = affinity.CookieConfig.Strategy
+		ups.SessionAffinity.CookieSessionAffinity.Hash = affinity.CookieConfig.Hash
+
+		locs := ups.SessionAffinity.CookieSessionAffinity.Locations
+		if _, ok := locs[host]; !ok {
+			locs[host] = []string{}
+		}
+
+		locs[host] = append(locs[host], path.Path)
+	}
 }
 
 // GetAuthCertificate is used by the auth-tls annotations to get a cert from a secret

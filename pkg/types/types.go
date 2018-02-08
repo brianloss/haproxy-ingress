@@ -61,6 +61,8 @@ type (
 		Syslog                      string `json:"syslog-endpoint"`
 		BalanceAlgorithm            string `json:"balance-algorithm"`
 		BackendCheckInterval        string `json:"backend-check-interval"`
+		BackendCheckFallCount       int `json:"backend-check-fall-count"`
+		BackendCheckRiseCount       int `json:"backend-check-rise-count"`
 		Forwardfor                  string `json:"forwardfor"`
 		MaxConn                     int    `json:"max-connections"`
 		SSLHeadersPrefix            string `json:"ssl-headers-prefix"`
