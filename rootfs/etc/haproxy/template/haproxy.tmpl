@@ -100,7 +100,7 @@ backend {{ $backend.Name }}
     server {{ $slot.BackendServerName }} {{ $target }} {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}{{ if $cfg.DrainSupport }}weight {{ if $slot.BackendEndpoint.Draining }}0 {{ else }}100 {{ end }}{{ end }}check port {{ $slot.BackendEndpoint.Port }} inter {{ $cfg.BackendCheckInterval }}{{ if eq $sticky.AffinityType "cookie" }} cookie {{ backendHash $slot.BackendServerName }}{{ end }}
 {{- end }}
 {{- range $empty := $BackendSlots.EmptySlots }}
-    server {{ $empty }} 127.0.0.1:81 {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check disabled inter {{ $cfg.BackendCheckInterval }}{{ if eq $sticky.AffinityType "cookie" }} cookie {{ backendHash $empty }}{{ end }}
+    server {{ $empty }} 127.0.0.1:81 {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check disabled inter {{ $cfg.BackendCheckInterval }} {{ if eq $sticky.AffinityType "cookie" }} cookie {{ backendHash $empty }}{{ end }}
 {{- end }}
 {{- end }}
 
