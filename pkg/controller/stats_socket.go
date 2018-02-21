@@ -295,7 +295,7 @@ func fillBackendServerSlots(updatedConfig *types.ControllerConfig) {
 				curEndpoint := endpoint
 				target := fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)
 				newBackend.FullSlots[target] = types.HAProxyBackendSlot{
-					BackendServerName: target,
+					BackendServerName: endpoint.Target.Name,
 					BackendEndpoint:   &curEndpoint,
 				}
 			}
