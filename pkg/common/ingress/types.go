@@ -191,6 +191,8 @@ type Backend struct {
 	MonitorPort int `json:"monitor-port,omitempty"`
 	// URI to use for health checks
 	HealthCheckURI string `json:"health-check-uri,omitempty"`
+	// Port to use for health checks
+	HealthCheckPort int `json:"health-check-port,omitempty"`
 }
 
 // SessionAffinityConfig describes different affinity configurations for new sessions.

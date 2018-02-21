@@ -185,6 +185,9 @@ func (b1 *Backend) Equal(b2 *Backend) bool {
 	if b1.HealthCheckURI != b2.HealthCheckURI {
 		return false
 	}
+	if b1.HealthCheckPort != b2.HealthCheckPort {
+		return false
+	}
 
 	if len(b1.Endpoints) != len(b2.Endpoints) {
 		return false

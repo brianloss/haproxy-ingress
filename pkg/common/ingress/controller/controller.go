@@ -611,6 +611,11 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 					ups.HealthCheckURI = healthCheckURI
 				}
 
+				// If there is a backend-specific health check port, then apply it
+				if healthCheckPort, _ := parser.GetIntAnnotation("ingress.kubernetes.io/health-check-port" + annotationSuffix, ing); healthCheckPort > 0 {
+					ups.HealthCheckPort = healthCheckPort
+				}
+
 				// Apply the ingress-global affinity configuration (which will do nothing if there is already an affinity config set)
 				applyAffinityConfig(ups, affinity, host, path)
 			}
