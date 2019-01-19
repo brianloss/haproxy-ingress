@@ -21,8 +21,8 @@ global
     hard-stop-after {{ $cfg.TimeoutStop }}
 {{- end }}
 {{- if ne $cfg.Syslog "" }}
-    log {{ $cfg.Syslog }} format rfc5424 local0
-    log-tag ingress
+    log {{ $cfg.Syslog }} format {{ $cfg.SyslogFormat }} local0
+    log-tag {{ $cfg.SyslogTag }}
 {{- end }}
     lua-load /usr/local/etc/haproxy/lua/send-response.lua
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua
