@@ -111,6 +111,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 			DefaultMaxSize: 2048,
 			SecretName:     "",
 		},
+		TLSALPN:                "h2,http/1.1",
 		NbprocBalance:          1,
 		NbprocSSL:              0,
 		Nbthread:               1,
@@ -499,6 +500,12 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 			otherPaths = otherPaths + " " + location.Path
 			haLocation.HAMatchPath = " { path -m beg " + haLocation.Path + " }"
 			haLocation.HAMatchTxnPath = " { var(txn.path) -m beg " + haLocation.Path + " }"
+			for _, loc := range locations {
+				if loc.Path != haLocation.Path && strings.HasPrefix(loc.Path, haLocation.Path) {
+					haLocation.HAMatchPath = haLocation.HAMatchPath + " !{ path -m beg " + loc.Path + " }"
+					haLocation.HAMatchTxnPath = haLocation.HAMatchTxnPath + " !{ var(txn.path) -m beg " + loc.Path + " }"
+				}
+			}
 		}
 		haLocations[i] = &haLocation
 	}
